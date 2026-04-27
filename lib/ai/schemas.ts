@@ -76,6 +76,48 @@ export const detectAndScoreSchema = z.object({
 
 export type DetectAndScore = z.infer<typeof detectAndScoreSchema>;
 
+export const REWRITE_TONES = [
+  "Chuyên nghiệp",
+  "Gần gũi",
+  "Cảm xúc",
+  "Trực diện",
+  "Cao cấp",
+  "Tư vấn",
+  "Mạnh về chuyển đổi",
+] as const;
+
+export const REWRITE_LENGTHS = ["Ngắn", "Trung bình", "Dài"] as const;
+
+export const REWRITE_SALES_LEVELS = ["Nhẹ", "Vừa", "Mạnh"] as const;
+
+export const REWRITE_GOALS = [
+  "Tăng CTR",
+  "Tăng tin nhắn",
+  "Tăng lead",
+  "Giảm rủi ro chính sách",
+  "Làm rõ offer",
+  "Làm mạnh CTA",
+  "Thêm bằng chứng thuyết phục",
+] as const;
+
+export const rewriteOptionsSchema = z.object({
+  tone: z.enum(REWRITE_TONES),
+  length: z.enum(REWRITE_LENGTHS),
+  sales_level: z.enum(REWRITE_SALES_LEVELS),
+  optimization_goal: z.enum(REWRITE_GOALS),
+});
+
+export type RewriteOptions = z.infer<typeof rewriteOptionsSchema>;
+
+export const rewriteAndScoreSchema = z.object({
+  rewritten_content: z.string().min(20).max(8000),
+  improvements: z.array(z.string()).min(1).max(8),
+  detection: detectionSchema,
+  score: scoreResultSchema,
+});
+
+export type RewriteAndScore = z.infer<typeof rewriteAndScoreSchema>;
+
 export function scoreLabelFor(score: number): string {
   if (score >= 85) return "Rất tốt";
   if (score >= 75) return "Tốt";

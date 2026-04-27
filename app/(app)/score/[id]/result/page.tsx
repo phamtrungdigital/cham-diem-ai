@@ -109,16 +109,28 @@ export default async function ResultPage({ params }: { params: Params }) {
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link
+                  href={`/score/${id}/rewrite`}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[var(--color-primary)] px-4 text-sm font-medium text-white shadow-[0_2px_8px_rgba(24,119,242,0.25)] hover:bg-[var(--color-primary-hover)]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                    <path
+                      d="M7 1l1.6 4 4.4.4-3.4 3 1 4.3L7 10.6 3.4 12.7l1-4.3L1 5.4 5.4 5 7 1z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  Tối ưu content với AI
+                </Link>
+                <Link
                   href="/score/new/quick"
-                  className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[var(--color-primary)] px-4 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)]"
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-white px-4 text-sm font-medium text-[var(--color-text)] hover:border-[var(--color-primary)]"
                 >
                   Chấm content khác
                 </Link>
                 <Link
-                  href="/dashboard"
+                  href="/library"
                   className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-white px-4 text-sm font-medium text-[var(--color-text)] hover:border-[var(--color-primary)]"
                 >
-                  Về Dashboard
+                  Mở thư viện
                 </Link>
               </div>
             </div>

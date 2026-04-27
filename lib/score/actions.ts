@@ -7,10 +7,18 @@ import { createClient } from "@/lib/supabase/server";
 import { getAiCredentialsStatus } from "@/lib/ai/credentials";
 import {
   detectAndScore,
+  rewriteAndScore,
   MissingApiKeyError,
   AiResponseError,
 } from "@/lib/ai/client";
-import { CRITERIA_DEFS, scoreLabelFor } from "@/lib/ai/schemas";
+import {
+  CRITERIA_DEFS,
+  scoreLabelFor,
+  REWRITE_TONES,
+  REWRITE_LENGTHS,
+  REWRITE_SALES_LEVELS,
+  REWRITE_GOALS,
+} from "@/lib/ai/schemas";
 
 const startSchema = z.object({
   content: z
@@ -187,4 +195,192 @@ export async function startScoring(
 
   revalidatePath("/dashboard");
   redirect(`/score/${item.id}/result`);
+}
+
+const rewriteSchema = z.object({
+  content_item_id: z.string().uuid(),
+  tone: z.enum(REWRITE_TONES),
+  length: z.enum(REWRITE_LENGTHS),
+  sales_level: z.enum(REWRITE_SALES_LEVELS),
+  optimization_goal: z.enum(REWRITE_GOALS),
+});
+
+export async function rewriteScore(
+  _prev: ScoreState,
+  formData: FormData,
+): Promise<ScoreState> {
+  const parsed = rewriteSchema.safeParse({
+    content_item_id: formData.get("content_item_id"),
+    tone: formData.get("tone"),
+    length: formData.get("length"),
+    sales_level: formData.get("sales_level"),
+    optimization_goal: formData.get("optimization_goal"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, message: "Vui lòng chọn đầy đủ tuỳ chọn viết lại" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Bạn cần đăng nhập" };
+
+  const { data: item, error: itemErr } = await supabase
+    .from("content_items")
+    .select("id, objective, audience, industry, landing_page, user_id")
+    .eq("id", parsed.data.content_item_id)
+    .maybeSingle();
+  if (itemErr || !item) {
+    return { ok: false, message: "Không tìm thấy content" };
+  }
+
+  const { data: latestVersion } = await supabase
+    .from("content_versions")
+    .select("id, version_number, body")
+    .eq("content_item_id", item.id)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!latestVersion) {
+    return { ok: false, message: "Không tìm thấy phiên bản gốc" };
+  }
+
+  const { data: latestScore } = await supabase
+    .from("score_results")
+    .select("weaknesses")
+    .eq("content_item_id", item.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const status = await getAiCredentialsStatus();
+  const provider = status.defaultProvider;
+  if (
+    (provider === "anthropic" && !status.anthropic.hasKey) ||
+    (provider === "openai" && !status.openai.hasKey)
+  ) {
+    return {
+      ok: false,
+      message:
+        "Bạn chưa có API key cho provider mặc định. Vào Cài đặt để thêm key.",
+    };
+  }
+
+  let result;
+  try {
+    result = await rewriteAndScore(provider, {
+      original_content: latestVersion.body,
+      options: {
+        tone: parsed.data.tone,
+        length: parsed.data.length,
+        sales_level: parsed.data.sales_level,
+        optimization_goal: parsed.data.optimization_goal,
+      },
+      context: {
+        objective: item.objective,
+        audience: item.audience,
+        industry: item.industry,
+        landing_page: item.landing_page,
+      },
+      weaknesses: (latestScore?.weaknesses as string[] | null) ?? [],
+    });
+  } catch (e) {
+    if (e instanceof MissingApiKeyError) {
+      return { ok: false, message: e.message };
+    }
+    if (e instanceof AiResponseError) {
+      return {
+        ok: false,
+        message: "AI không trả về kết quả hợp lệ, vui lòng thử lại.",
+      };
+    }
+    const msg = e instanceof Error ? e.message : "Lỗi không xác định";
+    return { ok: false, message: `Lỗi gọi AI: ${msg}` };
+  }
+
+  const nextVersionNumber = latestVersion.version_number + 1;
+
+  const { data: newVersion, error: verErr } = await supabase
+    .from("content_versions")
+    .insert({
+      content_item_id: item.id,
+      version_number: nextVersionNumber,
+      version_type: "ai_optimized",
+      body: result.rewritten_content,
+    })
+    .select("id")
+    .single();
+
+  if (verErr || !newVersion) {
+    return { ok: false, message: verErr?.message ?? "Lỗi lưu phiên bản mới" };
+  }
+
+  await supabase.from("ai_recognitions").insert({
+    content_item_id: item.id,
+    version_id: newVersion.id,
+    platform: result.detection.platform,
+    objective: result.detection.objective,
+    audience: result.detection.audience,
+    hook: result.detection.hook,
+    offer: result.detection.offer,
+    cta: result.detection.cta,
+    tone_of_voice: result.detection.tone_of_voice,
+    policy_risk_level: result.detection.policy_risk_level,
+    policy_risk_summary: result.detection.policy_risk_summary,
+    user_confirmed: false,
+  });
+
+  const overallScore = Math.round(result.score.overall_score);
+  const label = scoreLabelFor(overallScore);
+
+  const { data: scoreRow, error: scoreErr } = await supabase
+    .from("score_results")
+    .insert({
+      content_item_id: item.id,
+      version_id: newVersion.id,
+      overall_score: overallScore,
+      score_label: label,
+      ctr_potential_level: result.score.ctr_potential.level,
+      ctr_potential_range: result.score.ctr_potential.range,
+      ctr_potential_note: result.score.ctr_potential.note,
+      summary: result.score.summary,
+      strengths: result.score.strengths,
+      weaknesses: result.score.weaknesses,
+      recommendations: result.score.recommendations,
+      policy_risks: result.score.policy_risks,
+    })
+    .select("id")
+    .single();
+
+  if (scoreErr || !scoreRow) {
+    return { ok: false, message: scoreErr?.message ?? "Lỗi lưu điểm bản mới" };
+  }
+
+  const criteriaRows = result.score.criteria_scores.map((c) => {
+    const def = CRITERIA_DEFS.find((d) => d.key === c.key);
+    return {
+      score_result_id: scoreRow.id,
+      criteria_key: c.key,
+      criteria_name: def?.name ?? c.key,
+      score: c.score,
+      weight: def?.weight ?? 0,
+      explanation: c.explanation,
+    };
+  });
+
+  await supabase.from("criteria_scores").insert(criteriaRows);
+
+  await supabase
+    .from("content_items")
+    .update({ status: "optimized" })
+    .eq("id", item.id);
+
+  revalidatePath(`/score/${item.id}/rewrite`);
+  revalidatePath(`/score/${item.id}/result`);
+  revalidatePath("/library");
+  revalidatePath("/dashboard");
+
+  return { ok: true, message: "Đã tạo bản viết lại" };
 }

@@ -186,6 +186,86 @@ export type AnalysisInput = {
   notes?: string;
 };
 
+export const REWRITE_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
+
+Khi viết lại content, BẠN CŨNG LÀ một copywriter Facebook Ads xuất sắc:
+- Giữ thông điệp cốt lõi của content gốc.
+- Tuân thủ giọng văn / độ dài / mức độ bán hàng / mục tiêu tối ưu mà user yêu cầu.
+- Không bịa số liệu, không cam kết tuyệt đối, không vi phạm chính sách Meta.
+- Bản viết lại PHẢI khác bản gốc đáng kể (không chỉ đổi vài từ).
+- Sau khi viết lại, chấm điểm bản mới đầy đủ 9 tiêu chí như cũ.
+- Liệt kê 3-6 cải thiện cụ thể (ngắn gọn) mà bản mới có so với bản cũ.`;
+
+export const REWRITE_TOOL = {
+  name: "submit_rewrite",
+  description:
+    "Nộp bản viết lại content quảng cáo, kèm phân tích nhận diện và điểm chi tiết của bản mới.",
+  input_schema: {
+    type: "object" as const,
+    required: ["rewritten_content", "improvements", "detection", "score"],
+    properties: {
+      rewritten_content: {
+        type: "string",
+        description: "Bản content viết lại tối ưu (giữ nguyên tiếng Việt)",
+      },
+      improvements: {
+        type: "array",
+        minItems: 1,
+        maxItems: 8,
+        description: "Liệt kê 3-6 cải thiện cụ thể của bản mới so với bản gốc",
+        items: { type: "string" },
+      },
+      detection: DETECT_AND_SCORE_TOOL.input_schema.properties.detection,
+      score: DETECT_AND_SCORE_TOOL.input_schema.properties.score,
+    },
+  },
+};
+
+export type RewriteInput = {
+  original_content: string;
+  options: {
+    tone: string;
+    length: string;
+    sales_level: string;
+    optimization_goal: string;
+  };
+  context?: {
+    objective?: string | null;
+    audience?: string | null;
+    industry?: string | null;
+    landing_page?: string | null;
+  };
+  weaknesses?: string[];
+};
+
+export function buildRewriteMessage(input: RewriteInput): string {
+  const { options, context, weaknesses } = input;
+  const ctx: string[] = [];
+  if (context?.objective) ctx.push(`- Mục tiêu quảng cáo: ${context.objective}`);
+  if (context?.audience) ctx.push(`- Đối tượng mục tiêu: ${context.audience}`);
+  if (context?.industry) ctx.push(`- Ngành hàng: ${context.industry}`);
+  if (context?.landing_page) ctx.push(`- Landing page: ${context.landing_page}`);
+
+  const weaknessList = weaknesses?.length
+    ? `\n\nNhững điểm cần cải thiện (từ lần chấm trước):\n- ${weaknesses.join("\n- ")}`
+    : "";
+
+  return `Viết lại content quảng cáo Facebook sau theo yêu cầu rồi gọi tool submit_rewrite.
+
+Tuỳ chọn viết lại:
+- Giọng văn: ${options.tone}
+- Độ dài: ${options.length}
+- Mức độ bán hàng: ${options.sales_level}
+- Mục tiêu tối ưu: ${options.optimization_goal}
+
+${ctx.length ? "Bối cảnh:\n" + ctx.join("\n") + "\n" : ""}${weaknessList}
+
+Content gốc:
+"""
+${input.original_content}
+"""`;
+}
+
 export function buildUserMessage(input: AnalysisInput): string {
   const optional: string[] = [];
   if (input.objective) optional.push(`- Mục tiêu quảng cáo: ${input.objective}`);
