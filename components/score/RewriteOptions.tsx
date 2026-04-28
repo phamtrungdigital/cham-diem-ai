@@ -53,6 +53,14 @@ function Pill<T extends string>({
   );
 }
 
+const EXTRA_PLACEHOLDER = `Ví dụ giúp AI viết sát thực tế hơn:
+- Sản phẩm/dịch vụ: Khoá học IELTS 6.5+ cho người đi làm
+- Offer cụ thể: Giảm 40% trong 7 ngày, tặng 4 buổi 1-1, học phí từ 4.9tr
+- Bằng chứng thật: 1.200 học viên đậu IELTS 7.0+, đối tác British Council
+- USP / khác biệt: Lớp tối 2 buổi/tuần, cam kết hoàn 100% nếu không đạt band
+- Tone brand: gần gũi, không "anh chị" cứng nhắc
+- Cấm dùng: từ "đảm bảo 100%", không claim sức khoẻ`;
+
 export default function RewriteOptions({
   contentItemId,
 }: {
@@ -71,6 +79,7 @@ export default function RewriteOptions({
   const [goal, setGoal] = useState<(typeof REWRITE_GOALS)[number]>(
     "Tăng CTR",
   );
+  const [extra, setExtra] = useState("");
 
   if (pending) {
     return (
@@ -149,6 +158,38 @@ export default function RewriteOptions({
           value={goal}
           onChange={setGoal}
         />
+      </div>
+
+      <div className="rounded-[16px] border border-[var(--color-border)] bg-white p-5">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-[var(--color-text)]">
+            Thông tin bổ sung{" "}
+            <span className="font-normal text-[var(--color-text-muted)]">
+              (tuỳ chọn — giúp AI viết cụ thể hơn)
+            </span>
+          </p>
+          <span
+            className={`text-xs ${
+              extra.length > 2000
+                ? "text-[var(--color-error)]"
+                : "text-[var(--color-text-muted)]"
+            }`}
+          >
+            {extra.length}/2000
+          </span>
+        </div>
+        <textarea
+          name="extra_context"
+          rows={6}
+          value={extra}
+          onChange={(e) => setExtra(e.target.value)}
+          placeholder={EXTRA_PLACEHOLDER}
+          className="block w-full rounded-[12px] border border-[var(--color-border)] bg-white p-3.5 text-sm leading-relaxed text-[var(--color-text)] placeholder:whitespace-pre-line placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+        />
+        <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
+          Càng cụ thể càng giúp AI viết bản tốt hơn — sản phẩm, offer, số liệu
+          thật, USP, bằng chứng. Nếu để trống, AI chỉ dựa vào content gốc.
+        </p>
       </div>
 
       {state.message && !state.ok && (

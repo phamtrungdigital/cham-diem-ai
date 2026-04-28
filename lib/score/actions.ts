@@ -203,6 +203,12 @@ const rewriteSchema = z.object({
   length: z.enum(REWRITE_LENGTHS),
   sales_level: z.enum(REWRITE_SALES_LEVELS),
   optimization_goal: z.enum(REWRITE_GOALS),
+  extra_context: z
+    .string()
+    .trim()
+    .max(2000, "Thông tin bổ sung tối đa 2000 ký tự")
+    .optional()
+    .or(z.literal("")),
 });
 
 export async function rewriteScore(
@@ -215,6 +221,7 @@ export async function rewriteScore(
     length: formData.get("length"),
     sales_level: formData.get("sales_level"),
     optimization_goal: formData.get("optimization_goal"),
+    extra_context: formData.get("extra_context") ?? "",
   });
 
   if (!parsed.success) {
@@ -285,6 +292,7 @@ export async function rewriteScore(
         landing_page: item.landing_page,
       },
       weaknesses: (latestScore?.weaknesses as string[] | null) ?? [],
+      extra_context: parsed.data.extra_context || null,
     });
   } catch (e) {
     if (e instanceof MissingApiKeyError) {

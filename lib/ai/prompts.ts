@@ -236,10 +236,11 @@ export type RewriteInput = {
     landing_page?: string | null;
   };
   weaknesses?: string[];
+  extra_context?: string | null;
 };
 
 export function buildRewriteMessage(input: RewriteInput): string {
-  const { options, context, weaknesses } = input;
+  const { options, context, weaknesses, extra_context } = input;
   const ctx: string[] = [];
   if (context?.objective) ctx.push(`- Mục tiêu quảng cáo: ${context.objective}`);
   if (context?.audience) ctx.push(`- Đối tượng mục tiêu: ${context.audience}`);
@@ -250,6 +251,10 @@ export function buildRewriteMessage(input: RewriteInput): string {
     ? `\n\nNhững điểm cần cải thiện (từ lần chấm trước):\n- ${weaknesses.join("\n- ")}`
     : "";
 
+  const extra = extra_context?.trim()
+    ? `\n\nThông tin sản phẩm / offer / bằng chứng do user cung cấp (ƯU TIÊN dùng để bản viết lại cụ thể, có số liệu, đúng tone brand):\n${extra_context.trim()}`
+    : "";
+
   return `Viết lại content quảng cáo Facebook sau theo yêu cầu rồi gọi tool submit_rewrite.
 
 Tuỳ chọn viết lại:
@@ -258,7 +263,7 @@ Tuỳ chọn viết lại:
 - Mức độ bán hàng: ${options.sales_level}
 - Mục tiêu tối ưu: ${options.optimization_goal}
 
-${ctx.length ? "Bối cảnh:\n" + ctx.join("\n") + "\n" : ""}${weaknessList}
+${ctx.length ? "Bối cảnh:\n" + ctx.join("\n") + "\n" : ""}${weaknessList}${extra}
 
 Content gốc:
 """
