@@ -6,6 +6,7 @@ import CompareView, {
   type VersionSummary,
 } from "@/components/score/CompareView";
 import { createClient } from "@/lib/supabase/server";
+import { listPresets } from "@/lib/presets/actions";
 
 type Params = Promise<{ id: string }>;
 
@@ -70,6 +71,8 @@ export default async function RewritePage({ params }: { params: Params }) {
   const before = summaries[0];
   const after = hasRewrite ? summaries[summaries.length - 1] : null;
 
+  const presets = await listPresets("rewrite");
+
   return (
     <>
       <Topbar
@@ -100,7 +103,7 @@ export default async function RewritePage({ params }: { params: Params }) {
             <h2 className="mb-4 text-sm font-semibold text-[var(--color-text)]">
               {hasRewrite ? "Tạo bản viết lại khác" : "Tuỳ chọn viết lại"}
             </h2>
-            <RewriteOptions contentItemId={id} />
+            <RewriteOptions contentItemId={id} presets={presets} />
           </section>
 
           <div className="flex flex-wrap gap-2 pt-2">

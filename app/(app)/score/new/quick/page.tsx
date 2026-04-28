@@ -2,6 +2,7 @@ import Link from "next/link";
 import Topbar from "@/components/app/Topbar";
 import QuickScoreForm from "@/components/score/QuickScoreForm";
 import { getAiCredentialsStatus } from "@/lib/ai/credentials";
+import { listPresets } from "@/lib/presets/actions";
 
 export const metadata = { title: "Chấm nhanh content" };
 
@@ -10,6 +11,7 @@ export default async function QuickScorePage() {
   const provider = status.defaultProvider;
   const hasKey =
     provider === "anthropic" ? status.anthropic.hasKey : status.openai.hasKey;
+  const presets = await listPresets("score");
 
   return (
     <>
@@ -47,7 +49,7 @@ export default async function QuickScorePage() {
             </div>
           )}
 
-          <QuickScoreForm />
+          <QuickScoreForm presets={presets} />
         </div>
       </main>
     </>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Topbar from "@/components/app/Topbar";
 import GuidedScoreForm from "@/components/score/GuidedScoreForm";
 import { getAiCredentialsStatus } from "@/lib/ai/credentials";
+import { listPresets } from "@/lib/presets/actions";
 
 export const metadata = { title: "Chấm điểm có hướng dẫn" };
 
@@ -10,6 +11,7 @@ export default async function GuidedScorePage() {
   const provider = status.defaultProvider;
   const hasKey =
     provider === "anthropic" ? status.anthropic.hasKey : status.openai.hasKey;
+  const presets = await listPresets("score");
 
   return (
     <>
@@ -47,7 +49,7 @@ export default async function GuidedScorePage() {
             </div>
           )}
 
-          <GuidedScoreForm />
+          <GuidedScoreForm presets={presets} />
         </div>
       </main>
     </>

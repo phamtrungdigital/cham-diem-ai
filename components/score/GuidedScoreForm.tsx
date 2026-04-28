@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { startScoring, type ScoreState } from "@/lib/score/actions";
+import PresetTextarea from "@/components/presets/PresetTextarea";
+import type { Preset } from "@/lib/presets/actions";
 
 const initial: ScoreState = { ok: false };
 
@@ -33,6 +35,7 @@ type State = {
   content: string;
   landing_page: string;
   notes: string;
+  extra_freetext: string;
 };
 
 const EMPTY_STATE: State = {
@@ -46,6 +49,7 @@ const EMPTY_STATE: State = {
   content: "",
   landing_page: "",
   notes: "",
+  extra_freetext: "",
 };
 
 function buildExtraContext(s: State): string {
@@ -55,8 +59,13 @@ function buildExtraContext(s: State): string {
   if (s.offer_details.trim())
     parts.push(`Offer cụ thể: ${s.offer_details.trim()}`);
   if (s.proof.trim()) parts.push(`Bằng chứng / số liệu thật: ${s.proof.trim()}`);
+  if (s.extra_freetext.trim()) parts.push(s.extra_freetext.trim());
   return parts.join("\n\n");
 }
+
+const FREETEXT_PLACEHOLDER = `Thông tin tự do (vd: tone brand, từ cấm, chỉ định viết theo template cũ)
+- Tone: gần gũi, không "anh chị" cứng nhắc
+- Cấm dùng: "đảm bảo 100%", không claim sức khoẻ`;
 
 const ANALYZING_STEPS = [
   "Đang đọc nội dung",
@@ -91,7 +100,11 @@ function AnalyzingState() {
   );
 }
 
-export default function GuidedScoreForm() {
+export default function GuidedScoreForm({
+  presets,
+}: {
+  presets: Preset[];
+}) {
   const [state, action, pending] = useActionState(startScoring, initial);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<State>(EMPTY_STATE);
@@ -215,6 +228,24 @@ export default function GuidedScoreForm() {
 
         {step === 3 && (
           <>
+            <Card
+              title="Thông tin bổ sung tự do"
+              hint="Tuỳ chọn — có thể lưu/áp dụng mẫu để dùng lại"
+            >
+              <PresetTextarea
+                scope="score"
+                value={form.extra_freetext}
+                onChange={update("extra_freetext")}
+                initialPresets={presets}
+                rows={4}
+                max={2000}
+                placeholder={FREETEXT_PLACEHOLDER}
+              />
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                Nội dung này được nối thêm vào context cho AI. Có thể để trống
+                nếu các trường cấu trúc bên dưới đã đủ.
+              </p>
+            </Card>
             <Card
               title="Sản phẩm / dịch vụ"
               hint="Càng cụ thể, AI viết và chấm càng sát thực tế"

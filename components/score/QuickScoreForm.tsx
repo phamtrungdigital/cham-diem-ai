@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { startScoring, type ScoreState } from "@/lib/score/actions";
+import PresetTextarea from "@/components/presets/PresetTextarea";
+import type { Preset } from "@/lib/presets/actions";
 
 const objectives = [
   "Tăng nhận diện",
@@ -15,9 +17,21 @@ const objectives = [
 
 const initial: ScoreState = { ok: false };
 
-export default function QuickScoreForm() {
+const EXTRA_PLACEHOLDER = `Ví dụ giúp AI chấm sát thực tế hơn:
+- Sản phẩm/dịch vụ: Khoá học IELTS 6.5+ cho người đi làm
+- Offer: Giảm 40% trong 7 ngày, học phí từ 4.9tr
+- Bằng chứng thật: 1.200 học viên đậu 7.0+, đối tác British Council
+- USP: cam kết hoàn 100% nếu không đạt band đăng ký
+- Tone brand: gần gũi, không "anh chị" cứng nhắc`;
+
+export default function QuickScoreForm({
+  presets,
+}: {
+  presets: Preset[];
+}) {
   const [state, action, pending] = useActionState(startScoring, initial);
   const [content, setContent] = useState("");
+  const [extra, setExtra] = useState("");
   const [showOptional, setShowOptional] = useState(false);
 
   const len = content.length;
@@ -119,6 +133,23 @@ export default function QuickScoreForm() {
               type="url"
               placeholder="https://yourwebsite.com/landing-page"
             />
+
+            <div>
+              <span className="mb-1 block text-xs font-medium text-[var(--color-text)]">
+                Thông tin chi tiết về sản phẩm / offer / bằng chứng
+              </span>
+              <PresetTextarea
+                scope="score"
+                name="extra_context"
+                value={extra}
+                onChange={setExtra}
+                initialPresets={presets}
+                rows={5}
+                max={3000}
+                placeholder={EXTRA_PLACEHOLDER}
+              />
+            </div>
+
             <p className="pt-1 text-xs text-[var(--color-text-muted)]">
               Các trường này giúp AI đánh giá chính xác hơn. Nếu để trống, AI
               sẽ tự suy luận từ content đã dán.

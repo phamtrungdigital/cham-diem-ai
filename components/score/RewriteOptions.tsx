@@ -8,6 +8,8 @@ import {
   REWRITE_SALES_LEVELS,
   REWRITE_GOALS,
 } from "@/lib/ai/schemas";
+import PresetTextarea from "@/components/presets/PresetTextarea";
+import type { Preset } from "@/lib/presets/actions";
 
 const initial: ScoreState = { ok: false };
 
@@ -63,8 +65,10 @@ const EXTRA_PLACEHOLDER = `Ví dụ giúp AI viết sát thực tế hơn:
 
 export default function RewriteOptions({
   contentItemId,
+  presets,
 }: {
   contentItemId: string;
+  presets: Preset[];
 }) {
   const [state, action, pending] = useActionState(rewriteScore, initial);
   const [tone, setTone] = useState<(typeof REWRITE_TONES)[number]>(
@@ -161,30 +165,21 @@ export default function RewriteOptions({
       </div>
 
       <div className="rounded-[16px] border border-[var(--color-border)] bg-white p-5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-[var(--color-text)]">
-            Thông tin bổ sung{" "}
-            <span className="font-normal text-[var(--color-text-muted)]">
-              (tuỳ chọn — giúp AI viết cụ thể hơn)
-            </span>
-          </p>
-          <span
-            className={`text-xs ${
-              extra.length > 2000
-                ? "text-[var(--color-error)]"
-                : "text-[var(--color-text-muted)]"
-            }`}
-          >
-            {extra.length}/2000
+        <p className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+          Thông tin bổ sung{" "}
+          <span className="font-normal text-[var(--color-text-muted)]">
+            (tuỳ chọn — giúp AI viết cụ thể hơn)
           </span>
-        </div>
-        <textarea
+        </p>
+        <PresetTextarea
+          scope="rewrite"
           name="extra_context"
-          rows={6}
           value={extra}
-          onChange={(e) => setExtra(e.target.value)}
+          onChange={setExtra}
+          initialPresets={presets}
+          rows={6}
+          max={2000}
           placeholder={EXTRA_PLACEHOLDER}
-          className="block w-full rounded-[12px] border border-[var(--color-border)] bg-white p-3.5 text-sm leading-relaxed text-[var(--color-text)] placeholder:whitespace-pre-line placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
         />
         <p className="mt-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
           Càng cụ thể càng giúp AI viết bản tốt hơn — sản phẩm, offer, số liệu
