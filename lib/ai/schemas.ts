@@ -16,9 +16,33 @@ const intCoerced = z.preprocess((v) => {
 
 const stringList = (max = 12) =>
   z.preprocess(
-    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []),
+    (v) => {
+      // Some models return arrays as JSON strings — parse first.
+      if (typeof v === "string") {
+        try { v = JSON.parse(v); } catch { /* fall through */ }
+      }
+      return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : [];
+    },
     z.array(z.string().trim().min(1).max(400)).max(max),
   );
+
+// Some models (esp. Claude with deeply nested tool schemas) return nested
+// objects as JSON strings instead of real objects. Parse before validating.
+const jsonObject = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => {
+    if (typeof v === "string") {
+      try { return JSON.parse(v); } catch { return v; }
+    }
+    return v;
+  }, schema);
+
+const jsonArray = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => {
+    if (typeof v === "string") {
+      try { return JSON.parse(v); } catch { return v; }
+    }
+    return v;
+  }, schema);
 
 export const detectionSchema = z.object({
   platform: z.string().default("Facebook Ads"),
@@ -87,12 +111,12 @@ export const policyRiskSchema = z.object({
 export const scoreResultSchema = z.object({
   overall_score: intCoerced,
   score_label: z.string().optional().default(""),
-  ctr_potential: ctrPotentialSchema,
+  ctr_potential: jsonObject(ctrPotentialSchema),
   // Allow 1-12 criteria — server fills missing keys with neutral defaults.
-  criteria_scores: z.array(criteriaScoreSchema).min(1).max(12),
+  criteria_scores: jsonArray(z.array(criteriaScoreSchema).min(1).max(12)),
   strengths: stringList(12),
   weaknesses: stringList(12),
-  policy_risks: z.array(policyRiskSchema).max(8).optional().default([]),
+  policy_risks: jsonArray(z.array(policyRiskSchema).max(8)).optional().default([]),
   recommendations: stringList(12),
   summary: z.string().optional().default(""),
 });
@@ -100,8 +124,8 @@ export const scoreResultSchema = z.object({
 export type ScoreResult = z.infer<typeof scoreResultSchema>;
 
 export const detectAndScoreSchema = z.object({
-  detection: detectionSchema,
-  score: scoreResultSchema,
+  detection: jsonObject(detectionSchema),
+  score: jsonObject(scoreResultSchema),
 });
 
 export type DetectAndScore = z.infer<typeof detectAndScoreSchema>;
@@ -142,8 +166,8 @@ export type RewriteOptions = z.infer<typeof rewriteOptionsSchema>;
 export const rewriteAndScoreSchema = z.object({
   rewritten_content: z.string().min(10).max(8000),
   improvements: stringList(12),
-  detection: detectionSchema,
-  score: scoreResultSchema,
+  detection: jsonObject(detectionSchema),
+  score: jsonObject(scoreResultSchema),
 });
 
 export type RewriteAndScore = z.infer<typeof rewriteAndScoreSchema>;
