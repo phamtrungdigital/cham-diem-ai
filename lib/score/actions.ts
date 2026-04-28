@@ -62,21 +62,21 @@ export async function startScoring(
   if (!user) return { ok: false, message: "Bạn cần đăng nhập" };
 
   const status = await getAiCredentialsStatus();
-  const provider = status.defaultProvider;
+  const scoreProvider = status.score.provider;
   if (
-    (provider === "anthropic" && !status.anthropic.hasKey) ||
-    (provider === "openai" && !status.openai.hasKey)
+    (scoreProvider === "anthropic" && !status.anthropic.hasKey) ||
+    (scoreProvider === "openai" && !status.openai.hasKey)
   ) {
     return {
       ok: false,
       message:
-        "Bạn chưa có API key cho provider mặc định. Vào Cài đặt để thêm key.",
+        "Bạn chưa có API key cho provider chấm điểm. Vào Cài đặt để thêm key.",
     };
   }
 
   let analysis;
   try {
-    analysis = await detectAndScore(provider, {
+    analysis = await detectAndScore({
       content: parsed.data.content,
       objective: parsed.data.objective || undefined,
       audience: parsed.data.audience || undefined,
@@ -268,21 +268,21 @@ export async function rewriteScore(
     .maybeSingle();
 
   const status = await getAiCredentialsStatus();
-  const provider = status.defaultProvider;
+  const rewriteProvider = status.rewrite.provider;
   if (
-    (provider === "anthropic" && !status.anthropic.hasKey) ||
-    (provider === "openai" && !status.openai.hasKey)
+    (rewriteProvider === "anthropic" && !status.anthropic.hasKey) ||
+    (rewriteProvider === "openai" && !status.openai.hasKey)
   ) {
     return {
       ok: false,
       message:
-        "Bạn chưa có API key cho provider mặc định. Vào Cài đặt để thêm key.",
+        "Bạn chưa có API key cho provider viết lại. Vào Cài đặt để thêm key.",
     };
   }
 
   let result;
   try {
-    result = await rewriteAndScore(provider, {
+    result = await rewriteAndScore({
       original_content: latestVersion.body,
       options: {
         tone: parsed.data.tone,

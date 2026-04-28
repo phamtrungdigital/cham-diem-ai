@@ -10,6 +10,7 @@ import type {
   AiCredentialsStatus,
   Provider,
 } from "@/lib/ai/credentials";
+import { MODEL_CATALOG, DEFAULT_MODEL } from "@/lib/ai/models";
 
 const initial: SettingsState = { ok: false };
 
@@ -105,6 +106,83 @@ function ProviderKeyField({
   );
 }
 
+type TaskModelPickerProps = {
+  title: string;
+  description: string;
+  providerName: string;
+  modelName: string;
+  initialProvider: Provider;
+  initialModel: string;
+};
+
+function TaskModelPicker({
+  title,
+  description,
+  providerName,
+  modelName,
+  initialProvider,
+  initialModel,
+}: TaskModelPickerProps) {
+  const [provider, setProvider] = useState<Provider>(initialProvider);
+  const [model, setModel] = useState<string>(initialModel);
+
+  const handleProviderChange = (next: Provider) => {
+    if (next === provider) return;
+    setProvider(next);
+    const stillValid = MODEL_CATALOG[next].some((m) => m.id === model);
+    if (!stillValid) setModel(DEFAULT_MODEL[next]);
+  };
+
+  const options = MODEL_CATALOG[provider];
+
+  return (
+    <div className="rounded-[16px] border border-[var(--color-border)] bg-white p-5">
+      <p className="text-sm font-semibold text-[var(--color-text)]">{title}</p>
+      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+        {description}
+      </p>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {providers.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            onClick={() => handleProviderChange(p.value)}
+            className={`rounded-[10px] border px-3 py-2 text-left text-xs font-medium transition-colors ${
+              provider === p.value
+                ? "border-[var(--color-primary)] bg-[#e8f3ff] text-[var(--color-text)]"
+                : "border-[var(--color-border)] bg-white text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/40"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-3 block text-xs font-medium text-[var(--color-text-muted)]">
+        Model
+      </label>
+      <select
+        value={model}
+        onChange={(e) => setModel(e.target.value)}
+        className="mt-1 block h-11 w-full rounded-[12px] border border-[var(--color-border)] bg-white px-3 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+      >
+        {options.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+        {options.find((m) => m.id === model)?.tagline ?? ""}
+      </p>
+
+      <input type="hidden" name={providerName} value={provider} />
+      <input type="hidden" name={modelName} value={model} />
+    </div>
+  );
+}
+
 export default function AiKeysForm({
   status,
 }: {
@@ -120,6 +198,9 @@ export default function AiKeysForm({
       <div className="rounded-[16px] border border-[var(--color-border)] bg-white p-5">
         <p className="mb-3 text-sm font-semibold text-[var(--color-text)]">
           AI mặc định
+        </p>
+        <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+          Provider mặc định khi tác vụ chưa có cấu hình riêng.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {providers.map((p) => (
@@ -148,6 +229,24 @@ export default function AiKeysForm({
           value={defaultProvider}
         />
       </div>
+
+      <TaskModelPicker
+        title="Model chấm điểm"
+        description="Dùng cho phân tích & cho điểm content. Nên ưu tiên model có khả năng suy luận tốt."
+        providerName="score_provider"
+        modelName="score_model"
+        initialProvider={status.score.provider}
+        initialModel={status.score.model}
+      />
+
+      <TaskModelPicker
+        title="Model viết lại"
+        description="Dùng cho viết lại content theo gợi ý. Có thể chọn model khác với model chấm điểm."
+        providerName="rewrite_provider"
+        modelName="rewrite_model"
+        initialProvider={status.rewrite.provider}
+        initialModel={status.rewrite.model}
+      />
 
       <ProviderKeyField
         label="Anthropic API key"
@@ -192,7 +291,7 @@ export default function AiKeysForm({
       </div>
 
       <div className="flex justify-end">
-        <div className="w-full sm:w-auto">
+        <div className="w-full sm:w-auto sm:min-w-[200px]">
           <SubmitButton label="Lưu cài đặt" />
         </div>
       </div>

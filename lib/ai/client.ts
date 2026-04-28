@@ -1,7 +1,11 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { getProviderKey, type Provider } from "@/lib/ai/credentials";
+import {
+  getTaskConfig,
+  type Provider,
+  type TaskKind,
+} from "@/lib/ai/credentials";
 import {
   SYSTEM_PROMPT,
   REWRITE_SYSTEM_PROMPT,
@@ -18,9 +22,6 @@ import {
   type DetectAndScore,
   type RewriteAndScore,
 } from "@/lib/ai/schemas";
-
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export class MissingApiKeyError extends Error {
   constructor(public provider: Provider) {
@@ -54,11 +55,12 @@ function logSchemaFailure(
 
 async function callAnthropic(
   apiKey: string,
+  model: string,
   input: AnalysisInput,
 ): Promise<DetectAndScore> {
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
-    model: ANTHROPIC_MODEL,
+    model,
     max_tokens: 6000,
     system: SYSTEM_PROMPT,
     tools: [DETECT_AND_SCORE_TOOL],
@@ -99,11 +101,12 @@ async function callAnthropic(
 
 async function callOpenAI(
   apiKey: string,
+  model: string,
   input: AnalysisInput,
 ): Promise<DetectAndScore> {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
-    model: OPENAI_MODEL,
+    model,
     max_tokens: 6000,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -161,24 +164,28 @@ async function callOpenAI(
   return parsed.data;
 }
 
+async function resolveTaskRuntime(task: TaskKind) {
+  const cfg = await getTaskConfig(task);
+  if (!cfg.apiKey) throw new MissingApiKeyError(cfg.provider);
+  return cfg as { provider: Provider; model: string; apiKey: string };
+}
+
 export async function detectAndScore(
-  provider: Provider,
   input: AnalysisInput,
 ): Promise<DetectAndScore> {
-  const key = await getProviderKey(provider);
-  if (!key) throw new MissingApiKeyError(provider);
-
-  if (provider === "anthropic") return callAnthropic(key, input);
-  return callOpenAI(key, input);
+  const { provider, model, apiKey } = await resolveTaskRuntime("score");
+  if (provider === "anthropic") return callAnthropic(apiKey, model, input);
+  return callOpenAI(apiKey, model, input);
 }
 
 async function callAnthropicRewrite(
   apiKey: string,
+  model: string,
   input: RewriteInput,
 ): Promise<RewriteAndScore> {
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
-    model: ANTHROPIC_MODEL,
+    model,
     max_tokens: 6500,
     system: REWRITE_SYSTEM_PROMPT,
     tools: [REWRITE_TOOL],
@@ -219,11 +226,12 @@ async function callAnthropicRewrite(
 
 async function callOpenAIRewrite(
   apiKey: string,
+  model: string,
   input: RewriteInput,
 ): Promise<RewriteAndScore> {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
-    model: OPENAI_MODEL,
+    model,
     max_tokens: 6500,
     messages: [
       { role: "system", content: REWRITE_SYSTEM_PROMPT },
@@ -282,12 +290,10 @@ async function callOpenAIRewrite(
 }
 
 export async function rewriteAndScore(
-  provider: Provider,
   input: RewriteInput,
 ): Promise<RewriteAndScore> {
-  const key = await getProviderKey(provider);
-  if (!key) throw new MissingApiKeyError(provider);
-
-  if (provider === "anthropic") return callAnthropicRewrite(key, input);
-  return callOpenAIRewrite(key, input);
+  const { provider, model, apiKey } = await resolveTaskRuntime("rewrite");
+  if (provider === "anthropic")
+    return callAnthropicRewrite(apiKey, model, input);
+  return callOpenAIRewrite(apiKey, model, input);
 }
