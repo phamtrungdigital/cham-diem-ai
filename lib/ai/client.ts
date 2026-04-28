@@ -40,6 +40,18 @@ export class AiResponseError extends Error {
   }
 }
 
+function logSchemaFailure(
+  provider: string,
+  kind: "detect_and_score" | "rewrite_and_score",
+  raw: unknown,
+  issues: unknown,
+) {
+  console.error(
+    `[ai] ${provider} ${kind} schema validation failed`,
+    JSON.stringify({ issues, raw }, null, 2).slice(0, 4000),
+  );
+}
+
 async function callAnthropic(
   apiKey: string,
   input: AnalysisInput,
@@ -47,20 +59,36 @@ async function callAnthropic(
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model: ANTHROPIC_MODEL,
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: SYSTEM_PROMPT,
     tools: [DETECT_AND_SCORE_TOOL],
     tool_choice: { type: "tool", name: DETECT_AND_SCORE_TOOL.name },
     messages: [{ role: "user", content: buildUserMessage(input) }],
   });
 
+  if (response.stop_reason === "max_tokens") {
+    console.error(
+      "[ai] anthropic detect_and_score truncated at max_tokens; bump or shorten input",
+    );
+  }
+
   const toolBlock = response.content.find((b) => b.type === "tool_use");
   if (!toolBlock || toolBlock.type !== "tool_use") {
+    console.error(
+      "[ai] anthropic detect_and_score missing tool_use block",
+      JSON.stringify(response, null, 2).slice(0, 2000),
+    );
     throw new AiResponseError("AI không trả về tool call hợp lệ", response);
   }
 
   const parsed = detectAndScoreSchema.safeParse(toolBlock.input);
   if (!parsed.success) {
+    logSchemaFailure(
+      "anthropic",
+      "detect_and_score",
+      toolBlock.input,
+      parsed.error.issues,
+    );
     throw new AiResponseError(
       "AI trả về JSON không khớp schema",
       parsed.error.issues,
@@ -76,6 +104,7 @@ async function callOpenAI(
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
     model: OPENAI_MODEL,
+    max_tokens: 6000,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserMessage(input) },
@@ -98,6 +127,10 @@ async function callOpenAI(
 
   const call = response.choices[0]?.message?.tool_calls?.[0];
   if (!call || call.type !== "function") {
+    console.error(
+      "[ai] openai detect_and_score missing function tool_call",
+      JSON.stringify(response, null, 2).slice(0, 2000),
+    );
     throw new AiResponseError("OpenAI không trả về tool call hợp lệ", response);
   }
 
@@ -105,11 +138,21 @@ async function callOpenAI(
   try {
     payload = JSON.parse(call.function.arguments);
   } catch (e) {
+    console.error(
+      "[ai] openai tool arguments not parseable JSON",
+      call.function.arguments.slice(0, 2000),
+    );
     throw new AiResponseError("OpenAI tool arguments không phải JSON", e);
   }
 
   const parsed = detectAndScoreSchema.safeParse(payload);
   if (!parsed.success) {
+    logSchemaFailure(
+      "openai",
+      "detect_and_score",
+      payload,
+      parsed.error.issues,
+    );
     throw new AiResponseError(
       "OpenAI trả về JSON không khớp schema",
       parsed.error.issues,
@@ -136,20 +179,36 @@ async function callAnthropicRewrite(
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model: ANTHROPIC_MODEL,
-    max_tokens: 4500,
+    max_tokens: 6500,
     system: REWRITE_SYSTEM_PROMPT,
     tools: [REWRITE_TOOL],
     tool_choice: { type: "tool", name: REWRITE_TOOL.name },
     messages: [{ role: "user", content: buildRewriteMessage(input) }],
   });
 
+  if (response.stop_reason === "max_tokens") {
+    console.error(
+      "[ai] anthropic rewrite truncated at max_tokens; bump or shorten input",
+    );
+  }
+
   const toolBlock = response.content.find((b) => b.type === "tool_use");
   if (!toolBlock || toolBlock.type !== "tool_use") {
+    console.error(
+      "[ai] anthropic rewrite missing tool_use block",
+      JSON.stringify(response, null, 2).slice(0, 2000),
+    );
     throw new AiResponseError("AI không trả về tool call hợp lệ", response);
   }
 
   const parsed = rewriteAndScoreSchema.safeParse(toolBlock.input);
   if (!parsed.success) {
+    logSchemaFailure(
+      "anthropic",
+      "rewrite_and_score",
+      toolBlock.input,
+      parsed.error.issues,
+    );
     throw new AiResponseError(
       "AI trả về JSON không khớp schema",
       parsed.error.issues,
@@ -165,6 +224,7 @@ async function callOpenAIRewrite(
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
     model: OPENAI_MODEL,
+    max_tokens: 6500,
     messages: [
       { role: "system", content: REWRITE_SYSTEM_PROMPT },
       { role: "user", content: buildRewriteMessage(input) },
@@ -187,6 +247,10 @@ async function callOpenAIRewrite(
 
   const call = response.choices[0]?.message?.tool_calls?.[0];
   if (!call || call.type !== "function") {
+    console.error(
+      "[ai] openai rewrite missing function tool_call",
+      JSON.stringify(response, null, 2).slice(0, 2000),
+    );
     throw new AiResponseError("OpenAI không trả về tool call hợp lệ", response);
   }
 
@@ -194,11 +258,21 @@ async function callOpenAIRewrite(
   try {
     payload = JSON.parse(call.function.arguments);
   } catch (e) {
+    console.error(
+      "[ai] openai rewrite tool arguments not parseable JSON",
+      call.function.arguments.slice(0, 2000),
+    );
     throw new AiResponseError("OpenAI tool arguments không phải JSON", e);
   }
 
   const parsed = rewriteAndScoreSchema.safeParse(payload);
   if (!parsed.success) {
+    logSchemaFailure(
+      "openai",
+      "rewrite_and_score",
+      payload,
+      parsed.error.issues,
+    );
     throw new AiResponseError(
       "OpenAI trả về JSON không khớp schema",
       parsed.error.issues,

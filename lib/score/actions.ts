@@ -14,6 +14,7 @@ import {
 import {
   CRITERIA_DEFS,
   scoreLabelFor,
+  normalizeCriteriaScores,
   REWRITE_TONES,
   REWRITE_LENGTHS,
   REWRITE_SALES_LEVELS,
@@ -174,7 +175,8 @@ export async function startScoring(
     return { ok: false, message: resErr?.message ?? "Lỗi lưu kết quả" };
   }
 
-  const criteriaRows = score.criteria_scores.map((c) => {
+  const normalized = normalizeCriteriaScores(score.criteria_scores);
+  const criteriaRows = normalized.map((c) => {
     const def = CRITERIA_DEFS.find((d) => d.key === c.key);
     return {
       score_result_id: result.id,
@@ -366,7 +368,8 @@ export async function rewriteScore(
     return { ok: false, message: scoreErr?.message ?? "Lỗi lưu điểm bản mới" };
   }
 
-  const criteriaRows = result.score.criteria_scores.map((c) => {
+  const normalizedRewrite = normalizeCriteriaScores(result.score.criteria_scores);
+  const criteriaRows = normalizedRewrite.map((c) => {
     const def = CRITERIA_DEFS.find((d) => d.key === c.key);
     return {
       score_result_id: scoreRow.id,
