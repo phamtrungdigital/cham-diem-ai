@@ -28,10 +28,11 @@ const startSchema = z.object({
     .min(20, "Content cần ít nhất 20 ký tự")
     .max(5000, "Content tối đa 5000 ký tự"),
   objective: z.string().trim().max(80).optional().or(z.literal("")),
-  audience: z.string().trim().max(200).optional().or(z.literal("")),
+  audience: z.string().trim().max(500).optional().or(z.literal("")),
   industry: z.string().trim().max(80).optional().or(z.literal("")),
   landing_page: z.string().trim().max(500).optional().or(z.literal("")),
-  notes: z.string().trim().max(500).optional().or(z.literal("")),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+  extra_context: z.string().trim().max(3000).optional().or(z.literal("")),
 });
 
 export type ScoreState = { ok: boolean; message?: string; redirectTo?: string };
@@ -47,6 +48,7 @@ export async function startScoring(
     industry: formData.get("industry") ?? "",
     landing_page: formData.get("landing_page") ?? "",
     notes: formData.get("notes") ?? "",
+    extra_context: formData.get("extra_context") ?? "",
   });
 
   if (!parsed.success) {
@@ -81,6 +83,7 @@ export async function startScoring(
       industry: parsed.data.industry || undefined,
       landing_page: parsed.data.landing_page || undefined,
       notes: parsed.data.notes || undefined,
+      extra_context: parsed.data.extra_context || null,
     });
   } catch (e) {
     if (e instanceof MissingApiKeyError) {

@@ -184,6 +184,7 @@ export type AnalysisInput = {
   industry?: string;
   landing_page?: string;
   notes?: string;
+  extra_context?: string | null;
 };
 
 export const REWRITE_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
@@ -280,9 +281,15 @@ export function buildUserMessage(input: AnalysisInput): string {
     optional.push(`- Landing page: ${input.landing_page}`);
   if (input.notes) optional.push(`- Ghi chú: ${input.notes}`);
 
+  const extra = input.extra_context?.trim()
+    ? `\n\nThông tin chi tiết về sản phẩm / offer / bằng chứng do user cung cấp (DÙNG để chấm điểm chính xác hơn — content có offer cụ thể, có bằng chứng thật là content tốt; nếu user khai thiếu, đó là điểm yếu cần ghi nhận):\n${input.extra_context.trim()}`
+    : "";
+
   return `Phân tích content quảng cáo Facebook sau và gọi tool submit_analysis.
 
-${optional.length ? "Thông tin bổ sung:\n" + optional.join("\n") + "\n\n" : ""}Content:
+${optional.length ? "Thông tin bổ sung:\n" + optional.join("\n") : ""}${extra}
+
+Content:
 """
 ${input.content}
 """`;

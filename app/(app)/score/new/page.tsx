@@ -82,8 +82,11 @@ export default function NewScorePage() {
               </span>
             </Link>
 
-            <div className="flex flex-col rounded-[20px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] opacity-90">
-              <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] text-[var(--color-text-muted)]">
+            <Link
+              href="/score/new/guided"
+              className="group flex flex-col rounded-[20px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5 hover:border-[var(--color-primary)]/40"
+            >
+              <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] text-[var(--color-text-muted)] group-hover:bg-[#e8f3ff] group-hover:text-[var(--color-primary)]">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path
                     d="M3 5h14M3 10h14M3 15h10"
@@ -97,25 +100,44 @@ export default function NewScorePage() {
                 Nhập có hướng dẫn theo quy trình
               </h2>
               <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                Form từng bước cho người mới — chi tiết hơn nhưng chậm hơn.
+                Form 4 bước — khai báo sản phẩm, USP, offer, bằng chứng. AI
+                chấm với context đầy đủ → kết quả chính xác hơn.
               </p>
               <ul className="mt-4 space-y-1.5 text-sm text-[var(--color-text)]">
                 {[
-                  "Form hướng dẫn từng bước",
-                  "Phù hợp người mới",
-                  "Dữ liệu đầu vào đầy đủ hơn",
-                  "Phân tích chi tiết hơn",
+                  "Hướng dẫn từng bước",
+                  "Phù hợp người mới hoặc content quan trọng",
+                  "Khai báo sản phẩm / USP / offer / bằng chứng",
+                  "AI chấm và viết lại sát thực tế hơn",
                 ].map((b) => (
-                  <li key={b} className="flex items-start gap-2 text-[var(--color-text-muted)]">
-                    <span className="mt-0.5 flex-shrink-0 text-[var(--color-text-muted)]">·</span>
+                  <li key={b} className="flex items-start gap-2">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden
+                      className="mt-0.5 flex-shrink-0 text-[var(--color-success)]"
+                    >
+                      <path
+                        d="M3 8l3 3 7-7"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                     {b}
                   </li>
                 ))}
               </ul>
-              <span className="mt-6 inline-flex h-11 items-center justify-center rounded-[12px] border border-[var(--color-border)] bg-white px-5 text-sm font-medium text-[var(--color-text-muted)]">
-                Sắp ra mắt
+              <span className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-[var(--color-border)] bg-white px-5 text-sm font-medium text-[var(--color-text)] group-hover:border-[var(--color-primary)] group-hover:text-[var(--color-primary)]">
+                Bắt đầu hướng dẫn
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                  <path d="M2 7h10m0 0L8 3m4 4l-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </span>
-            </div>
+            </Link>
           </div>
         </div>
       </main>
